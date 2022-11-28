@@ -7,13 +7,33 @@ interface MainInterface {
 
 class Node {
     id: string | number;
-    parent:Node | 'root';
+    parent:Node | null;
     children:Node[] = [];
 
-    constructor(item:MainInterface, parent:Node) {
+    constructor(item:MainInterface, parent:Node | null) {
         this.id = String(item.id);
-        this.parent = parent ?? 'root';
+        this.parent = parent;
+        if (this.parent) {
+            this.parent.children.push(this);
+        }
     };
+
+    getParents(): Node[] | [] {
+        if (this.parent) {
+            return [this.parent, ...this.parent.getParents()]
+        }
+        return []
+    };
+
+    getChildren(): Node[] | [] {
+        let result = this.children;
+        if (this.children.length > 0) {
+            for (let child of this.children) {
+                result.push(...child.getChildren());
+            }
+        }
+        return result
+    }
 }
 
 class TreeStore {
@@ -22,15 +42,11 @@ class TreeStore {
 
     constructor(items:MainInterface[]) {
         this.fullItemsList = items;
-        
+        items = items.sort(el => Number(el.id))
         items.forEach(item => {
             item.id = String(item.id);
             item.parent = String(item.parent);
             let nodeElement = new Node(item, this.itemsMapCollection.get(item.parent));
-
-            if (nodeElement.parent != 'root') {
-                nodeElement.parent.children.push(nodeElement);
-            }
             this.itemsMapCollection.set(item.id, nodeElement);
         });
     };
@@ -63,59 +79,24 @@ class TreeStore {
     };
 
     getAllChildren(id: number | string) {
-        let result:Node[] = [];
-        try {
-            let childElements = this.getChildren(id);
-            for (let child of childElements) {
-                if (child.children.length != 0) {
-                    result.push(child);
-                    
-                    this.getAllChildren(child.id)?.map((element) => {
-                        result.push(element);
-                    });
-
-                } else {
-                    result.push(child);
-                }
-            }
-            return result;
-
-        } catch (error) {
-            console.log('Ошибка: ', error);
-        }
+        let element = this.getItem(id);
+        return element.getChildren()
     };
 
     getAllParents(id: number | string) {
-        let result:Node[] = [];
-        try {
-            let parentElement = this.getItem(id).parent;
-            if (parentElement != 'root') {
-                result.push(parentElement);
-                this.getAllParents(parentElement.id)?.map((element) => {
-                    result.push(element);
-                });
-
-            } else {
-                result.push(parentElement);
-            }
-            return result;
-
-        } catch (error) {
-            console.log('Ошибка: ', error);
-        }
+        let element = this.getItem(id);
+        return element.getParents()
     }
 };
 
 const items = [
     { id: 1, parent: 'root' },
     { id: 2, parent: 1, type: 'test' },
+    { id: 6, parent: 2, type: 'test' },
+    { id: 7, parent: 4, type: null },
     { id: 3, parent: 1, type: 'test' },
-
     { id: 4, parent: 2, type: 'test' },
     { id: 5, parent: 2, type: 'test' },
-    { id: 6, parent: 2, type: 'test' },
-
-    { id: 7, parent: 4, type: null },
     { id: 8, parent: 4, type: null },
 ];
 
